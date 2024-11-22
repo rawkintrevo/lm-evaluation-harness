@@ -12,7 +12,7 @@ class LocalCompletionsAPI(TemplateAPI):
     def __init__(
         self,
         base_url=None,
-        tokenizer_backend="huggingface",
+        tokenizer_backend=None,
         **kwargs,
     ):
         super().__init__(
