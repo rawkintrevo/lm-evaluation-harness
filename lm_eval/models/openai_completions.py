@@ -13,6 +13,7 @@ class LocalCompletionsAPI(TemplateAPI):
         self,
         base_url=None,
         tokenizer_backend=None,
+        tokenized_requests=False,
         **kwargs,
     ):
         super().__init__(
