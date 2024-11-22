@@ -472,68 +472,68 @@ class TemplateAPI(TemplateLM):
 
             return await tqdm_asyncio.gather(*tasks, desc="Requesting API")
 
-    def _loglikelihood_tokens(self, requests, **kwargs) -> List[Tuple[float, bool]]:
-        assert (
-            self.tokenizer is not None
-        ), "Tokenizer is required for loglikelihood tasks to compute context lengths."
-        res = []
+    # def _loglikelihood_tokens(self, requests, **kwargs) -> List[Tuple[float, bool]]:
+    #     assert (
+    #         self.tokenizer is not None
+    #     ), "Tokenizer is required for loglikelihood tasks to compute context lengths."
+    #     res = []
 
-        def _collate(req: LogLikelihoodInputs):
-            """Defines the key for the sorted method"""
-            # the negative sign on len(toks) sorts descending - this has a few advantages:
-            # - time estimates will always be over not underestimates, which is more useful for planning
-            # - to know the size of a batch when going through the list, you know the first one is always the batch
-            #   padded context length. this is useful to simplify the batching logic and more importantly to make
-            #   automatic adaptive batches much much easier to implement
-            # - any OOMs will happen right away rather than near the end
+    #     def _collate(req: LogLikelihoodInputs):
+    #         """Defines the key for the sorted method"""
+    #         # the negative sign on len(toks) sorts descending - this has a few advantages:
+    #         # - time estimates will always be over not underestimates, which is more useful for planning
+    #         # - to know the size of a batch when going through the list, you know the first one is always the batch
+    #         #   padded context length. this is useful to simplify the batching logic and more importantly to make
+    #         #   automatic adaptive batches much much easier to implement
+    #         # - any OOMs will happen right away rather than near the end
 
-            toks = req[1] + req[2]
-            return -len(toks), tuple(toks)
+    #         toks = req[1] + req[2]
+    #         return -len(toks), tuple(toks)
 
-        re_ord = Collator(
-            requests,
-            sort_fn=_collate,
-            group_by=None,
-        )
-        # if concurrent then we'll batch in the async context
-        chunked = re_ord.get_batched(n=self._batch_size if self._concurrent <= 1 else 0)
-        if self._concurrent <= 1:
-            pbar = tqdm(desc="Requesting API", total=len(requests))
-            for chunk in chunked:
-                inputs, ctxlens, cache_keys = self.batch_loglikelihood_requests([chunk])
+    #     re_ord = Collator(
+    #         requests,
+    #         sort_fn=_collate,
+    #         group_by=None,
+    #     )
+    #     # if concurrent then we'll batch in the async context
+    #     chunked = re_ord.get_batched(n=self._batch_size if self._concurrent <= 1 else 0)
+    #     if self._concurrent <= 1:
+    #         pbar = tqdm(desc="Requesting API", total=len(requests))
+    #         for chunk in chunked:
+    #             inputs, ctxlens, cache_keys = self.batch_loglikelihood_requests([chunk])
 
-                outputs = retry(
-                    stop=stop_after_attempt(self.max_retries),
-                    wait=wait_exponential(multiplier=0.5, min=1, max=10),
-                    reraise=True,
-                )(self.model_call)(messages=inputs, generate=False)
-                if isinstance(outputs, dict):
-                    outputs = [outputs]
-                for answer_, cache_key in zip(
-                    self.parse_logprobs(
-                        outputs=outputs, tokens=inputs, ctxlens=ctxlens
-                    ),
-                    cache_keys,
-                ):
-                    if answer_ is not None:
-                        res.append(answer_)
-                        # cache requests that aren't from a loglikelihood_rolling request
-                        if cache_key is not None:
-                            self.cache_hook.add_partial(
-                                "loglikelihood", cache_key, answer_
-                            )
-                        pbar.update(1)
-        else:
-            inputs, ctxlens, cache_keys = self.batch_loglikelihood_requests(chunked)
-            res = itertools.chain.from_iterable(
-                asyncio.run(
-                    self.get_batched_requests(
-                        inputs, cache_keys, generate=False, ctxlens=ctxlens
-                    )
-                )
-            )
+    #             outputs = retry(
+    #                 stop=stop_after_attempt(self.max_retries),
+    #                 wait=wait_exponential(multiplier=0.5, min=1, max=10),
+    #                 reraise=True,
+    #             )(self.model_call)(messages=inputs, generate=False)
+    #             if isinstance(outputs, dict):
+    #                 outputs = [outputs]
+    #             for answer_, cache_key in zip(
+    #                 self.parse_logprobs(
+    #                     outputs=outputs, tokens=inputs, ctxlens=ctxlens
+    #                 ),
+    #                 cache_keys,
+    #             ):
+    #                 if answer_ is not None:
+    #                     res.append(answer_)
+    #                     # cache requests that aren't from a loglikelihood_rolling request
+    #                     if cache_key is not None:
+    #                         self.cache_hook.add_partial(
+    #                             "loglikelihood", cache_key, answer_
+    #                         )
+    #                     pbar.update(1)
+    #     else:
+    #         inputs, ctxlens, cache_keys = self.batch_loglikelihood_requests(chunked)
+    #         res = itertools.chain.from_iterable(
+    #             asyncio.run(
+    #                 self.get_batched_requests(
+    #                     inputs, cache_keys, generate=False, ctxlens=ctxlens
+    #                 )
+    #             )
+    #         )
 
-        return re_ord.get_original(res)
+    #     return re_ord.get_original(res)
 
     def generate_until(
         self, requests: List[Instance], disable_tqdm: bool = False
@@ -614,6 +614,9 @@ class TemplateAPI(TemplateLM):
 
         return re_ord.get_original(res)
 
+    def _loglikelihood_tokens(self, requests, disable_tqdm: bool = False):
+        raise NotImplementedError("No support for logits.")
+        
     def loglikelihood_rolling(        
          self, requests: List[Instance], disable_tqdm: bool = False
     ) -> List[float]:
