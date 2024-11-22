@@ -614,39 +614,39 @@ class TemplateAPI(TemplateLM):
 
         return re_ord.get_original(res)
 
-    def loglikelihood_rolling(
-        self, requests: List[Instance], disable_tqdm: bool = False
-    ) -> List[float]:
-        loglikelihoods = []
+    # def loglikelihood_rolling(
+    #     self, requests: List[Instance], disable_tqdm: bool = False
+    # ) -> List[float]:
+    #     loglikelihoods = []
 
-        for (string,) in tqdm([req.args for req in requests], disable=disable_tqdm):
-            rolling_token_windows = list(
-                map(
-                    utils.make_disjoint_window,
-                    utils.get_rolling_token_windows(
-                        token_list=self.tok_encode(string),
-                        prefix_token=self.prefix_token_id,
-                        # max_seq_len - (1 for context)
-                        max_seq_len=self.max_length - 1,
-                        context_len=1,
-                    ),
-                )
-            )
+    #     for (string,) in tqdm([req.args for req in requests], disable=disable_tqdm):
+    #         rolling_token_windows = list(
+    #             map(
+    #                 utils.make_disjoint_window,
+    #                 utils.get_rolling_token_windows(
+    #                     token_list=self.tok_encode(string),
+    #                     prefix_token=self.prefix_token_id,
+    #                     # max_seq_len - (1 for context)
+    #                     max_seq_len=self.max_length - 1,
+    #                     context_len=1,
+    #                 ),
+    #             )
+    #         )
 
-            # TODO: Right now, we pass single EOT token to the Encoder and the full context to the decoder, in seq2seq case
-            rolling_token_windows = [(None,) + x for x in rolling_token_windows]
+    #         # TODO: Right now, we pass single EOT token to the Encoder and the full context to the decoder, in seq2seq case
+    #         rolling_token_windows = [(None,) + x for x in rolling_token_windows]
 
-            string_nll = self._loglikelihood_tokens(
-                rolling_token_windows,
-                disable_tqdm=True,
-            )
+    #         string_nll = self._loglikelihood_tokens(
+    #             rolling_token_windows,
+    #             disable_tqdm=True,
+    #         )
 
-            # discard is_greedy
-            string_nll = [x[0] for x in string_nll]
+    #         # discard is_greedy
+    #         string_nll = [x[0] for x in string_nll]
 
-            string_nll = sum(string_nll)
-            loglikelihoods.append(string_nll)
+    #         string_nll = sum(string_nll)
+    #         loglikelihoods.append(string_nll)
 
-            # cache this loglikelihood_rolling request
-            self.cache_hook.add_partial("loglikelihood_rolling", (string,), string_nll)
-        return loglikelihoods
+    #         # cache this loglikelihood_rolling request
+    #         self.cache_hook.add_partial("loglikelihood_rolling", (string,), string_nll)
+    #     return loglikelihoods
