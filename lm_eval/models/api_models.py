@@ -614,9 +614,10 @@ class TemplateAPI(TemplateLM):
 
         return re_ord.get_original(res)
 
-    # def loglikelihood_rolling(
-    #     self, requests: List[Instance], disable_tqdm: bool = False
-    # ) -> List[float]:
+    def loglikelihood_rolling(        
+         self, requests: List[Instance], disable_tqdm: bool = False
+    ) -> List[float]:
+        raise NotImplementedError("No support for logits.")
     #     loglikelihoods = []
 
     #     for (string,) in tqdm([req.args for req in requests], disable=disable_tqdm):
